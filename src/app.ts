@@ -9,7 +9,7 @@ import {User} from "./entity/User";
 import {plainToClass} from "class-transformer";
 import {validate} from "class-validator";
 import config from './ormconfig';
-
+import jsonwebtoken from 'jsonwebtoken';
 
 export type AppContext=
   {
@@ -17,6 +17,7 @@ export type AppContext=
     dbConnection:Connection
   }
 
+//validation middleware
 const validateBody=<T>(cls:any,skipMissingProperties=false)=>{
   return  async (req,res,next)=>{
 
@@ -35,6 +36,42 @@ const validateBody=<T>(cls:any,skipMissingProperties=false)=>{
 
   }
 }
+
+//authenticaiton middleware  
+const authRequest=()=>{
+  return async (req:Request,res,next)=>{
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    if (token == null) return res.sendStatus(401)
+
+    try {
+      var _email = jsonwebtoken.verify(token,req.tokenSecret );
+      //fetch user from db 
+      let user=undefined;
+      if(typeof _email=== 'string')
+        {
+           user=await req.db.manager.findOne(User,{email:_email});
+        }
+      else
+        res.sendStatus(401);
+      if(user)
+        {
+          user.password='';
+          req.user=user;
+          next();
+        }
+        else
+        {
+          res.sendStatus(401);
+        }
+    } catch(err) {
+      // err
+        res.sendStatus(401)
+
+    }
+  }
+}
+
 //https://stackoverflow.com/questions/43429574/how-can-i-handle-type-with-middleware-of-express
 export const createApp=async () :Promise<AppContext>=>{
   const app=express();
@@ -42,9 +79,14 @@ export const createApp=async () :Promise<AppContext>=>{
 
   app.use(express.json());
 
-  //make db connection available so all route can use
+  //make db,tokenSecret available so all route can use
   app.use((req: Request ,res,next)=>{
     req.db=dbConnection
+
+    //use this to generate secret and save it in env
+    //require('crypto').randomBytes(64).toString('hex')
+    req.tokenSecret='21321knmdfndsk23jaksdajfkdjl';
+ 
     next() 
   })
 
@@ -56,6 +98,7 @@ export const createApp=async () :Promise<AppContext>=>{
 
   app.post("/register",validateBody(User),userController.registerUser);
   app.post("/token",validateBody(User),userController.getToken);
+  app.get("/user",authRequest(),userController.getUser);
 
   app.get("/todo",todoController.getTodo);
   app.get('/todo/:id',todoController.getTodoById);
@@ -65,7 +108,7 @@ export const createApp=async () :Promise<AppContext>=>{
  
   //catch all uncaughted errors
   app.use(function (err, req, res, next) {
-   console.error(err.code)
+   //console.error(err)
    if(err.code==23505)
      {
       res.status(400).send('Duplicated entry');  

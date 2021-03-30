@@ -1,10 +1,8 @@
-import express from 'express';
 import {User} from "../entity/User";
 import {Request,Response} from "express";
 import {plainToClass} from "class-transformer";
-import {validate} from "class-validator";
 import bcrypt from 'bcrypt';
-import {QueryFailedError} from "typeorm"
+import jsonwebtoken from 'jsonwebtoken';
 
 const registerUser=async (req:Request,res:Response,next)=>{
     let user=plainToClass(User,req.body);
@@ -18,7 +16,10 @@ const registerUser=async (req:Request,res:Response,next)=>{
 }
 
 const getToken=async(req:Request,res:Response,next)=>{
-
+    let expireTime='48h';
+    //use this to generate secret and save it in env
+    //require('crypto').randomBytes(64).toString('hex')
+    let tokensec=req.tokenSecret;
     let user=plainToClass(User,req.body);
     let dbUser=await req.db.manager.findOne(User,{email:user.email})
                       .catch(err=>next(err));
@@ -27,7 +28,8 @@ const getToken=async(req:Request,res:Response,next)=>{
        let match=await bcrypt.compare(user.password,dbUser.password);
        if(match)
          {
-           res.send({'token':'valid token'})
+           let token=jsonwebtoken.sign(user.email,tokensec)
+           res.send({'token':token})
          }
          else
          {
@@ -41,9 +43,15 @@ const getToken=async(req:Request,res:Response,next)=>{
      }
 
 }
+
+const getUser=async(req:Request,res:Response,next)=>{
+  delete req.user.password;
+  res.send(req.user);
+}
 export const userController={
     registerUser:registerUser,
-    getToken:getToken
+    getToken:getToken,
+    getUser:getUser
 }
 
 

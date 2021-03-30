@@ -145,6 +145,41 @@ describe("User test",()=>{
     
   })
   it('GET /user should return 200 when passed valid token in header',async()=>{
+      let newuser1=
+         {
+          email:"abc@email.com",
+          password:"abc123"
+         }
+      const res1=await request(context.app)
+                      .post("/register")
+                      .send(newuser1)
+
+      expect(res1.status).to.equal(201);
+      const res2=await request(context.app)
+                      .post("/token")
+                      .send(newuser1)
+
+      expect(res2.status).to.equal(200);
+      let token=res2.body.token;
+      const res3=await request(context.app)
+                       .get('/user')
+                       .auth(token,{type:'bearer'})
+      expect(res3.status).to.equal(200);
+      expect(res3.body).not.have.property('password');
+
+     
   })
+  it('GET /user should return 401 without valid token',async()=>{
+      const res1=await request(context.app)
+                       .get('/user')
+                       .auth('kasd',{type:'bearer'})
+      const res2=await request(context.app)
+                       .get('/user')
+
+      expect(res1.status).to.equal(401);
+      expect(res2.status).to.equal(401);
+  })
+ 
+ 
 
 })
