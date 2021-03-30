@@ -6,10 +6,10 @@ import {todoController} from "./controller/todos";
 import {userController} from "./controller/users";
 import {Todo} from "./entity/Todo";
 import {User} from "./entity/User";
-import {plainToClass} from "class-transformer";
-import {validate} from "class-validator";
 import config from './ormconfig';
-import jsonwebtoken from 'jsonwebtoken';
+import {authRequest} from './auth.middleware';
+import {validateBody} from './validation.middleware';
+
 
 export type AppContext=
   {
@@ -17,60 +17,7 @@ export type AppContext=
     dbConnection:Connection
   }
 
-//validation middleware
-const validateBody=<T>(cls:any,skipMissingProperties=false)=>{
-  return  async (req,res,next)=>{
 
-    let obj=plainToClass(cls,req.body);
-
-    let errors=await validate(obj,{skipMissingProperties});
-    if(errors.length>0)
-      {
-        let errlist:object[]= errors.map(er=>Object.values(er.constraints))
-        res.status(400).send(errlist)
-      }
-      else{
-        next();
-     }
-
-
-  }
-}
-
-//authenticaiton middleware  
-const authRequest=()=>{
-  return async (req:Request,res,next)=>{
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1]
-    if (token == null) return res.sendStatus(401)
-
-    try {
-      var _email = jsonwebtoken.verify(token,req.tokenSecret );
-      //fetch user from db 
-      let user=undefined;
-      if(typeof _email=== 'string')
-        {
-           user=await req.db.manager.findOne(User,{email:_email});
-        }
-      else
-        res.sendStatus(401);
-      if(user)
-        {
-          user.password='';
-          req.user=user;
-          next();
-        }
-        else
-        {
-          res.sendStatus(401);
-        }
-    } catch(err) {
-      // err
-        res.sendStatus(401)
-
-    }
-  }
-}
 
 //https://stackoverflow.com/questions/43429574/how-can-i-handle-type-with-middleware-of-express
 export const createApp=async () :Promise<AppContext>=>{
