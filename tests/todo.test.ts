@@ -1,14 +1,12 @@
-
 import chai from "chai";
 import chaiHttp from "chai-http";
 import {createApp,AppContext} from "../src/app";
 import {request,expect} from "chai";
 import {Todo} from "../src/entity/Todo";
-//import {testDbConfig} from '../src/connection.config'
 
 chai.use(chaiHttp);
 let context:AppContext;
-describe("test",()=>{
+describe("Todo test",()=>{
 
     before(async ()=>{
         context=await createApp();

@@ -3,10 +3,10 @@ import {Connection} from "typeorm";
 import {User} from "./entity/User";
 import {createApp} from "./app";
 
-
-
-createApp("dev_db").then(async context => {
+//import {devDbConfig} from './connection.config'
+createApp().then(async context => {
     //await addSeedData(connection) 
+
     const app=context.app;
     const port: number=3000;
     app.listen(port,()=>{
